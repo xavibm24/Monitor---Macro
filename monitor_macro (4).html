@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Monitor Macro — Xavi</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:#f5f5f0; color:#1a1a1a; padding:20px; max-width:600px; margin:0 auto; }
+h1 { font-size:20px; font-weight:600; margin-bottom:4px; }
+.sub { font-size:12px; color:#888; margin-bottom:24px; }
+.section { background:#fff; border-radius:12px; padding:18px; margin-bottom:14px; border:1px solid #e8e8e8; }
+.section-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:14px; gap:10px; }
+.section-title { font-size:11px; color:#999; text-transform:uppercase; letter-spacing:0.08em; }
+.section-when { font-size:10px; color:#bbb; text-align:right; line-height:1.5; max-width:180px; }
+.indicator { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+.ind-label { font-size:13px; color:#555; flex:1; min-width:0; }
+.ind-hint { font-size:10px; color:#bbb; display:block; }
+.ind-input { width:88px; padding:7px 10px; border:1.5px solid #e0e0e0; border-radius:8px; font-size:13px; text-align:right; outline:none; transition:border-color 0.15s; flex-shrink:0; }
+.ind-input:focus { border-color:#2563eb; }
+.ind-badge { font-size:11px; font-family:monospace; padding:3px 8px; border-radius:12px; white-space:nowrap; min-width:52px; text-align:center; flex-shrink:0; }
+.green { background:#dcfce7; color:#15803d; }
+.yellow { background:#fef9c3; color:#a16207; }
+.red { background:#fee2e2; color:#b91c1c; }
+.gray { background:#f3f4f6; color:#6b7280; }
+.curva-tip { font-size:11px; color:#888; margin-top:-6px; margin-bottom:10px; padding-left:4px; font-style:italic; }
+.divider { height:1px; background:#f0f0f0; margin:14px 0 16px; }
+.veredicto { border-radius:12px; padding:18px; margin-bottom:14px; display:none; }
+.ver-title { font-size:16px; font-weight:600; margin-bottom:8px; }
+.ver-desc { font-size:13px; line-height:1.6; }
+.acciones { background:#fff; border-radius:12px; padding:18px; border:1px solid #e8e8e8; display:none; margin-bottom:14px; }
+.accion { display:flex; gap:10px; align-items:flex-start; padding:10px 0; border-bottom:1px solid #f0f0f0; }
+.accion:last-child { border-bottom:none; }
+.accion-num { font-size:16px; width:28px; text-align:center; flex-shrink:0; }
+.accion-text { font-size:13px; color:#555; line-height:1.5; }
+.accion-text strong { color:#1a1a1a; }
+.save-btn { width:100%; padding:10px; background:#2563eb; color:#fff; border:none; border-radius:8px; font-size:13px; font-weight:500; cursor:pointer; margin-top:12px; }
+.save-btn:hover { background:#1d4ed8; }
+/* SYNC BUTTONS */
+.sync-row { display:flex; gap:8px; margin-bottom:14px; }
+.sync-btn { flex:1; padding:10px; border-radius:8px; border:1.5px solid #e0e0e0; background:#fff; font-size:12px; font-weight:500; cursor:pointer; color:#555; display:flex; align-items:center; justify-content:center; gap:6px; transition:border-color 0.15s; }
+.sync-btn:hover { border-color:#2563eb; color:#2563eb; }
+.sync-btn.import { background:#f9fafb; }
+/* HISTORIAL */
+.history-section { background:#fff; border-radius:12px; padding:18px; margin-bottom:14px; border:1px solid #e8e8e8; }
+.history-list { display:flex; flex-direction:column; gap:8px; margin-top:8px; }
+.history-card { border:1px solid #eee; border-radius:10px; padding:12px 14px; cursor:pointer; transition:border-color 0.15s; position:relative; }
+.history-card:hover { border-color:#2563eb; }
+.history-card-header { display:flex; align-items:center; gap:10px; padding-right:28px; }
+.history-fecha { font-size:12px; color:#888; font-family:monospace; min-width:60px; }
+.ciclo-pill { font-size:11px; padding:3px 9px; border-radius:10px; white-space:nowrap; font-weight:500; }
+.history-metrics { display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; }
+.metric-chip { font-size:10px; font-family:monospace; padding:2px 7px; border-radius:6px; background:#f5f5f0; color:#666; }
+.history-card-del { position:absolute; top:10px; right:10px; font-size:12px; color:#ddd; background:none; border:none; cursor:pointer; padding:2px 5px; }
+.history-card-del:hover { color:#e55; }
+/* MODAL */
+.modal-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); z-index:100; align-items:flex-end; justify-content:center; }
+.modal-overlay.open { display:flex; }
+.modal { background:#fff; border-radius:16px 16px 0 0; padding:24px 20px; width:100%; max-width:600px; max-height:85vh; overflow-y:auto; }
+.modal-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+.modal-title { font-size:16px; font-weight:600; }
+.modal-close { font-size:20px; color:#bbb; background:none; border:none; cursor:pointer; padding:4px 8px; }
+.modal-ciclo { font-size:13px; padding:6px 12px; border-radius:8px; display:inline-block; margin-bottom:16px; font-weight:500; }
+.modal-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:16px; }
+.modal-item { background:#f9f9f7; border-radius:8px; padding:10px 12px; }
+.modal-item-label { font-size:10px; color:#999; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:4px; }
+.modal-item-value { font-size:15px; font-weight:500; font-family:monospace; }
+.modal-acciones { border-top:1px solid #f0f0f0; padding-top:14px; }
+.modal-accion { display:flex; gap:10px; padding:8px 0; border-bottom:1px solid #f5f5f5; font-size:12px; color:#555; line-height:1.5; }
+.modal-accion:last-child { border-bottom:none; }
+/* OTROS */
+.fecha-row { display:flex; align-items:center; gap:10px; margin-bottom:6px; flex-wrap:wrap; }
+.fecha-row label { font-size:12px; color:#888; }
+.fecha-input { padding:6px 10px; border:1.5px solid #e0e0e0; border-radius:8px; font-size:12px; color:#555; outline:none; }
+.fecha-hint { font-size:11px; color:#bbb; margin-bottom:16px; }
+.tip-box { background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:10px 14px; margin-bottom:16px; font-size:12px; color:#92400e; line-height:1.6; }
+.empty-history { font-size:12px; color:#bbb; padding:12px 0; }
+footer { margin-top:20px; font-size:11px; color:#bbb; text-align:center; }
+#import-input { display:none; }
+.toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:#1a1a1a; color:#fff; padding:10px 20px; border-radius:8px; font-size:13px; z-index:200; opacity:0; transition:opacity 0.3s; pointer-events:none; }
+.toast.show { opacity:1; }
+</style>
+</head>
+<body>
+
+<h1>Monitor Macro</h1>
+<p class="sub">Rellena el primer lunes de cada mes → diagnóstico del ciclo + qué hacer</p>
+
+<!-- SYNC BUTTONS -->
+<div class="sync-row">
+  <button class="sync-btn" onclick="exportarHistorial()">⬇️ Exportar historial</button>
+  <button class="sync-btn import" onclick="document.getElementById('import-input').click()">⬆️ Importar historial</button>
+  <input type="file" id="import-input" accept=".json" onchange="importarHistorial(event)">
+</div>
+
+<!-- FORMULARIO -->
+<div class="section">
+  <div class="fecha-row">
+    <label>Mes de referencia:</label>
+    <input type="month" id="fecha" class="fecha-input">
+  </div>
+  <p class="fecha-hint">💡 El mes que estás analizando — normalmente el mes anterior al actual</p>
+  <div class="tip-box" id="timing-tip">Selecciona el mes de referencia para ver cuándo están disponibles cada dato.</div>
+
+  <div class="section-header">
+    <div class="section-title">Actividad económica</div>
+    <div class="section-when" id="when-macro">Disponible: primeros 10 días del mes siguiente</div>
+  </div>
+  <div class="indicator">
+    <span class="ind-label">PMI Manufacturero EEUU<span class="ind-hint">tradingeconomics.com → US Manufacturing PMI</span></span>
+    <input type="number" id="pmi-man" class="ind-input" placeholder="54" step="0.1" oninput="calc()">
+    <span id="b-pmi-man" class="ind-badge gray">—</span>
+  </div>
+  <div class="indicator">
+    <span class="ind-label">PMI Servicios EEUU<span class="ind-hint">tradingeconomics.com → US Services PMI</span></span>
+    <input type="number" id="pmi-ser" class="ind-input" placeholder="53" step="0.1" oninput="calc()">
+    <span id="b-pmi-ser" class="ind-badge gray">—</span>
+  </div>
+  <div class="indicator">
+    <span class="ind-label">Paro EEUU (%)<span class="ind-hint">tradingeconomics.com → US Unemployment Rate</span></span>
+    <input type="number" id="paro" class="ind-input" placeholder="4.2" step="0.1" oninput="calc()">
+    <span id="b-paro" class="ind-badge gray">—</span>
+  </div>
+
+  <div class="divider"></div>
+  <div class="section-header">
+    <div class="section-title">Precios y tipos</div>
+    <div class="section-when" id="when-precios">Disponible: días 10-15 del mes siguiente</div>
+  </div>
+  <div class="indicator">
+    <span class="ind-label">Inflación EEUU — IPC (%)<span class="ind-hint">tradingeconomics.com → US Inflation Rate</span></span>
+    <input type="number" id="inflacion" class="ind-input" placeholder="3.5" step="0.1" oninput="calc()">
+    <span id="b-inflacion" class="ind-badge gray">—</span>
+  </div>
+  <div class="indicator">
+    <span class="ind-label">Curva tipos 10Y−2Y (%)<span class="ind-hint">fred.stlouisfed.org → busca "T10Y2Y"</span></span>
+    <input type="number" id="curva" class="ind-input" placeholder="0.35" step="0.01" oninput="calc()">
+    <span id="b-curva" class="ind-badge gray">—</span>
+  </div>
+  <p class="curva-tip" id="curva-tip"></p>
+
+  <div class="divider"></div>
+  <div class="section-header">
+    <div class="section-title">Mercado — cierre último día hábil del mes</div>
+    <div class="section-when" id="when-mercado">Tomar: último día hábil del mes</div>
+  </div>
+  <div class="indicator">
+    <span class="ind-label">VIX — índice del miedo<span class="ind-hint">investing.com → S&P 500 VIX</span></span>
+    <input type="number" id="vix" class="ind-input" placeholder="17" step="0.1" oninput="calc()">
+    <span id="b-vix" class="ind-badge gray">—</span>
+  </div>
+  <div class="indicator">
+    <span class="ind-label">IWDA.AS precio (€)<span class="ind-hint">Google Finance → busca "IWDA" Euronext</span></span>
+    <input type="number" id="iwda" class="ind-input" placeholder="125" step="0.01" oninput="calc()">
+    <span id="b-iwda" class="ind-badge gray">—</span>
+  </div>
+  <div class="indicator">
+    <span class="ind-label">IWDA.AS máximo 52 semanas (€)<span class="ind-hint">Google Finance → IWDA → "52-week high"</span></span>
+    <input type="number" id="iwda-max" class="ind-input" placeholder="125" step="0.01" oninput="calc()">
+    <span id="b-iwda-drop" class="ind-badge gray">—</span>
+  </div>
+  <div class="indicator">
+    <span class="ind-label">Brent petróleo (USD)<span class="ind-hint">investing.com → Crude Oil Brent</span></span>
+    <input type="number" id="brent" class="ind-input" placeholder="85" step="0.1" oninput="calc()">
+    <span id="b-brent" class="ind-badge gray">—</span>
+  </div>
+</div>
+
+<!-- VEREDICTO -->
+<div id="veredicto-box" class="veredicto">
+  <div id="ver-ciclo" class="ver-title">—</div>
+  <div id="ver-desc" class="ver-desc"></div>
+</div>
+
+<!-- ACCIONES -->
+<div class="acciones" id="acciones-box">
+  <div class="section-title">Qué hacer este mes</div>
+  <div id="acciones-list"></div>
+  <button class="save-btn" onclick="guardarMes()">💾 Guardar en historial</button>
+</div>
+
+<!-- HISTORIAL -->
+<div class="history-section">
+  <div class="section-title">Historial — pulsa un mes para ver el detalle</div>
+  <div class="history-list" id="history-list">
+    <p class="empty-history">Sin datos guardados — rellena y pulsa Guardar</p>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal" id="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-fecha">—</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div id="modal-ciclo-pill" class="modal-ciclo">—</div>
+    <div class="modal-grid" id="modal-grid"></div>
+    <div class="modal-acciones">
+      <div class="section-title" style="margin-bottom:10px;">Acciones de ese mes</div>
+      <div id="modal-acciones"></div>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<footer>Monitor personal · No constituye asesoramiento financiero regulado</footer>
+
+<script>
+const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+const STORAGE_KEY = 'macro-v3';
+
+const today = new Date();
+const defaultDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+document.getElementById('fecha').value = defaultDate.toISOString().slice(0,7);
+updateTiming();
+document.getElementById('fecha').addEventListener('change', updateTiming);
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function updateTiming() {
+  const val = document.getElementById('fecha').value;
+  if (!val) return;
+  const [year, month] = val.split('-').map(Number);
+  const mesRef = MESES[month-1];
+  const mesSig = MESES[month % 12];
+  const anioSig = month === 12 ? year+1 : year;
+  document.getElementById('when-macro').textContent = 'Disponible: 1-10 ' + mesSig + ' ' + anioSig;
+  document.getElementById('when-precios').textContent = 'Disponible: 10-15 ' + mesSig + ' ' + anioSig;
+  document.getElementById('when-mercado').textContent = 'Tomar: último día hábil de ' + mesRef + ' ' + year;
+  const now = new Date();
+  const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const refDate = new Date(year, month-1, 1);
+  let tip = '';
+  if (refDate.getTime() === currentMonth.getTime()) {
+    tip = '⚠️ Mes en curso (' + mesRef + '): PMI definitivo, IPC y paro aún no cerrados. Puedes entrar ya VIX, IWDA y Brent.';
+  } else if (refDate < currentMonth) {
+    tip = '✅ ' + mesRef + ' ' + year + ': todos los datos disponibles. Puedes rellenar el cuadro completo.';
+  } else {
+    tip = '⏳ Mes futuro — datos no disponibles aún.';
+  }
+  document.getElementById('timing-tip').textContent = tip;
+}
+
+let lastCiclo = '', lastData = {}, lastAcciones = [];
+
+function badge(el, text, color) { el.textContent = text; el.className = 'ind-badge ' + color; }
+
+function diagnostico(pmiMan, pmiSer, paro, inflacion, curva, vix, iwdaDrop) {
+  const pmiAvg = (!isNaN(pmiMan) && !isNaN(pmiSer)) ? (pmiMan+pmiSer)/2 : !isNaN(pmiMan) ? pmiMan : !isNaN(pmiSer) ? pmiSer : 52;
+  const curvaVal = !isNaN(curva) ? curva : 0.5;
+  const vixVal = !isNaN(vix) ? vix : 17;
+  const infVal = !isNaN(inflacion) ? inflacion : 2.5;
+  const esRecesion = pmiAvg < 50 || vixVal > 35 || curvaVal < -0.4;
+  const esTardio = infVal > 3.5 && pmiAvg >= 50;
+  const esRecuperacion = pmiAvg >= 50 && pmiAvg <= 52 && infVal <= 3;
+  let ciclo, desc, color, acciones;
+  if (esRecesion) {
+    ciclo = '③ Recesión / corrección'; desc = 'PMI por debajo de 50, VIX elevado o curva muy invertida. Mercado en modo pánico. Momento de máxima oportunidad si tienes liquidez.'; color = '#fef2f2';
+    acciones = [
+      {e:'🚀',t:'<strong>Acelera aportaciones a Indexa</strong> — usa toda la munición. Las caídas del 20-40% son las que hacen la diferencia a largo plazo.'},
+      {e:'₿',t:'<strong>Extra en Bitcoin</strong> si IWDA cae >15% desde máximos.'},
+      {e:'✅',t:'<strong>Mantén el DCA</strong> de 8.000€ Indexa + 300€ BTC sin interrupción.'},
+      {e:'🏠',t:'<strong>Inmobiliario</strong>: vendedores con urgencia, precios más negociables — busca activamente.'}
+    ];
+  } else if (esTardio) {
+    ciclo = '② Expansión tardía'; desc = 'Economía creciendo pero inflación apretando. Fed sin margen para bajar tipos. Mercado puede seguir subiendo pero valoraciones tensas.'; color = '#fffbeb';
+    acciones = [
+      {e:'✅',t:'<strong>Mantén el DCA de 8.000€/mes</strong> a Indexa + 300€ BTC. No reduzcas por miedo a que esté caro.'},
+      {e:'💰',t:'<strong>Guarda munición</strong> (30-50k€) para cuando llegue la corrección.'},
+      {e:'👀',t:'<strong>Vigila el VIX</strong> — si supera 30, prepárate para aportar fuerte.'},
+      {e:'🏠',t:'<strong>Inmobiliario</strong>: si encuentras >4,5% neto, es momento razonable.'}
+    ];
+  } else if (esRecuperacion) {
+    ciclo = '④ Recuperación'; desc = 'PMI volviendo a zona de crecimiento, inflación controlada. El mejor punto de entrada ya pasó pero sigue siendo bueno.'; color = '#f0fdf4';
+    acciones = [
+      {e:'📈',t:'<strong>Mantén el DCA</strong> y considera aumentarlo si tienes liquidez excedente.'},
+      {e:'⚡',t:'<strong>Reduce liquidez excedente</strong> transfiriéndola a Indexa en tramos mensuales.'},
+      {e:'₿',t:'<strong>Bitcoin</strong> se comporta bien en recuperaciones — mantén 300€/mes.'},
+      {e:'🏠',t:'<strong>Inmobiliario</strong>: busca activamente, los precios pueden empezar a subir.'}
+    ];
+  } else {
+    ciclo = '① Expansión sana'; desc = 'PMI sólido, inflación controlada, mercado laboral fuerte. Mejor entorno para inversión a largo plazo.'; color = '#f0fdf4';
+    acciones = [
+      {e:'✅',t:'<strong>Mantén el DCA de 8.000€/mes</strong> a Indexa + 300€ BTC.'},
+      {e:'😎',t:'<strong>No hagas market timing</strong>. En expansión, tiempo en mercado bate al timing.'},
+      {e:'💶',t:'<strong>Despliega liquidez excedente</strong> en tramos si tienes dinero aparcado.'},
+      {e:'🏠',t:'<strong>Inmobiliario</strong>: buen momento si encuentras >4,5% neto.'}
+    ];
+  }
+  if (!isNaN(iwdaDrop)) {
+    if (iwdaDrop <= -15) acciones.push({e:'🔥',t:'<strong>IWDA cayó '+Math.abs(iwdaDrop).toFixed(0)+'% desde máx. 52s</strong> — activa extra: 5.000€ Indexa + 1.500€ BTC ahora.'});
+    else if (iwdaDrop <= -10) acciones.push({e:'⚡',t:'<strong>IWDA cayó '+Math.abs(iwdaDrop).toFixed(0)+'% desde máx. 52s</strong> — activa extra: 5.000€ Indexa + 1.000€ BTC.'});
+    else if (iwdaDrop <= -5) acciones.push({e:'👁',t:'<strong>IWDA cayó '+Math.abs(iwdaDrop).toFixed(0)+'% desde máx. 52s</strong> — activa extra: 5.000€ Indexa + 500€ BTC.'});
+  }
+  return { ciclo, desc, color, acciones };
+}
+
+function cicloColor(c) {
+  if (c.includes('Recesión')) return {bg:'#fee2e2',color:'#b91c1c'};
+  if (c.includes('tardía')) return {bg:'#fef9c3',color:'#a16207'};
+  if (c.includes('Recuperación')) return {bg:'#dcfce7',color:'#15803d'};
+  return {bg:'#dbeafe',color:'#1d4ed8'};
+}
+
+function calc() {
+  const pmiMan=parseFloat(document.getElementById('pmi-man').value);
+  const pmiSer=parseFloat(document.getElementById('pmi-ser').value);
+  const paro=parseFloat(document.getElementById('paro').value);
+  const inflacion=parseFloat(document.getElementById('inflacion').value);
+  const curva=parseFloat(document.getElementById('curva').value);
+  const vix=parseFloat(document.getElementById('vix').value);
+  const iwda=parseFloat(document.getElementById('iwda').value);
+  const iwdaMax=parseFloat(document.getElementById('iwda-max').value);
+  const brent=parseFloat(document.getElementById('brent').value);
+  let filled=0;
+  if(!isNaN(pmiMan)){filled++;badge(document.getElementById('b-pmi-man'),pmiMan+(pmiMan>52?' ✓':pmiMan>=50?' →':' ↓'),pmiMan>52?'green':pmiMan>=50?'yellow':'red');}
+  if(!isNaN(pmiSer)){filled++;badge(document.getElementById('b-pmi-ser'),pmiSer+(pmiSer>52?' ✓':pmiSer>=50?' →':' ↓'),pmiSer>52?'green':pmiSer>=50?'yellow':'red');}
+  if(!isNaN(paro)){filled++;badge(document.getElementById('b-paro'),paro+'% '+(paro<4.5?'✓':paro<5.5?'→':'↑'),paro<4.5?'green':paro<5.5?'yellow':'red');}
+  if(!isNaN(inflacion)){filled++;badge(document.getElementById('b-inflacion'),inflacion+'% '+(inflacion<=2.5?'✓':inflacion<=3.5?'⚠':'↑'),inflacion<=2.5?'green':inflacion<=3.5?'yellow':'red');}
+  if(!isNaN(curva)){filled++;const tip=document.getElementById('curva-tip');if(curva>0.2){badge(document.getElementById('b-curva'),'+'+curva.toFixed(2)+'%','green');tip.textContent='→ Normal: sin señal de recesión';tip.style.color='#15803d';}else if(curva>=-0.2){badge(document.getElementById('b-curva'),curva.toFixed(2)+'%','yellow');tip.textContent='→ Plana: vigilar si se mantiene';tip.style.color='#a16207';}else{badge(document.getElementById('b-curva'),curva.toFixed(2)+'% ⚠','red');tip.textContent='→ Invertida: posible recesión en 12-18 meses';tip.style.color='#b91c1c';}}
+  if(!isNaN(vix)){filled++;badge(document.getElementById('b-vix'),vix+(vix<20?' ✓':vix<30?' ⚠':' !!'),vix<20?'green':vix<30?'yellow':'red');}
+  if(!isNaN(iwda)){badge(document.getElementById('b-iwda'),iwda.toFixed(2)+'€','gray');}
+  const iwdaDrop=(!isNaN(iwda)&&!isNaN(iwdaMax)&&iwdaMax>0)?(iwda-iwdaMax)/iwdaMax*100:NaN;
+  if(!isNaN(iwdaDrop)){filled++;const d=parseFloat(iwdaDrop.toFixed(1));badge(document.getElementById('b-iwda-drop'),d.toFixed(1)+'%'+(d>=-3?'':d>=-8?' ⚡':' BUY'),d>=-3?'green':d>=-8?'yellow':'red');}
+  if(!isNaN(brent)){filled++;badge(document.getElementById('b-brent'),brent+(brent<85?' ✓':brent<100?' ⚠':' ↑'),brent<85?'green':brent<100?'yellow':'red');}
+  if(filled<4)return;
+  document.getElementById('veredicto-box').style.display='block';
+  document.getElementById('acciones-box').style.display='block';
+  const {ciclo,desc,color,acciones}=diagnostico(pmiMan,pmiSer,paro,inflacion,curva,vix,iwdaDrop);
+  lastCiclo=ciclo; lastData={pmiMan,pmiSer,paro,inflacion,curva,vix,iwda,iwdaMax,brent,iwdaDrop}; lastAcciones=acciones;
+  document.getElementById('ver-ciclo').textContent=ciclo;
+  document.getElementById('ver-desc').textContent=desc;
+  document.getElementById('veredicto-box').style.background=color;
+  document.getElementById('acciones-list').innerHTML=acciones.map(a=>`<div class="accion"><span class="accion-num">${a.e}</span><span class="accion-text">${a.t}</span></div>`).join('');
+}
+
+function getHistorial() { return JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]'); }
+function setHistorial(h) { localStorage.setItem(STORAGE_KEY, JSON.stringify(h.slice(0,36))); }
+
+function guardarMes() {
+  const fecha=document.getElementById('fecha').value;
+  if(!fecha||!lastCiclo){showToast('Introduce al menos 4 indicadores antes de guardar.');return;}
+  const h=getHistorial();
+  const d=lastData;
+  const entrada={fecha,ciclo:lastCiclo,data:{
+    pmiMan:!isNaN(d.pmiMan)?d.pmiMan:null,pmiSer:!isNaN(d.pmiSer)?d.pmiSer:null,
+    paro:!isNaN(d.paro)?d.paro:null,inflacion:!isNaN(d.inflacion)?d.inflacion:null,
+    curva:!isNaN(d.curva)?d.curva:null,vix:!isNaN(d.vix)?d.vix:null,
+    iwda:!isNaN(d.iwda)?d.iwda:null,iwdaMax:!isNaN(d.iwdaMax)?d.iwdaMax:null,
+    iwdaDrop:!isNaN(d.iwdaDrop)?d.iwdaDrop:null,brent:!isNaN(d.brent)?d.brent:null
+  },acciones:lastAcciones};
+  const idx=h.findIndex(x=>x.fecha===fecha);
+  if(idx>=0)h[idx]=entrada;else h.unshift(entrada);
+  setHistorial(h);
+  renderHistory();
+  showToast('✓ Guardado: '+fecha);
+}
+
+// EXPORTAR
+function exportarHistorial() {
+  const h=getHistorial();
+  if(!h.length){showToast('No hay datos para exportar.');return;}
+  const json=JSON.stringify(h,null,2);
+  const blob=new Blob([json],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download='monitor_macro_historial.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('✓ Historial exportado');
+}
+
+// IMPORTAR
+function importarHistorial(event) {
+  const file=event.target.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try {
+      const imported=JSON.parse(e.target.result);
+      if(!Array.isArray(imported)){showToast('❌ Archivo no válido');return;}
+      const existing=getHistorial();
+      // Merge: importados tienen prioridad, existing completa los que faltan
+      const merged=[...imported];
+      existing.forEach(entry=>{
+        if(!merged.find(x=>x.fecha===entry.fecha)) merged.push(entry);
+      });
+      merged.sort((a,b)=>b.fecha.localeCompare(a.fecha));
+      setHistorial(merged);
+      renderHistory();
+      showToast('✓ Importados '+imported.length+' meses');
+    } catch(err) {
+      showToast('❌ Error al leer el archivo');
+    }
+    event.target.value='';
+  };
+  reader.readAsText(file);
+}
+
+function renderHistory() {
+  const h=getHistorial();
+  const list=document.getElementById('history-list');
+  if(!h.length){list.innerHTML='<p class="empty-history">Sin datos guardados — rellena y pulsa Guardar</p>';return;}
+  list.innerHTML=h.map(e=>{
+    const c=cicloColor(e.ciclo);
+    const d=e.data||{};
+    const pmiAvg=(d.pmiMan!=null&&d.pmiSer!=null)?((d.pmiMan+d.pmiSer)/2).toFixed(1):d.pmiMan!=null?d.pmiMan:d.pmiSer!=null?d.pmiSer:'—';
+    const chips=[
+      pmiAvg!=='—'?`PMI ${pmiAvg}`:'',
+      d.inflacion!=null?`IPC ${d.inflacion}%`:'',
+      d.curva!=null?`Curva ${d.curva>=0?'+':''}${d.curva.toFixed(2)}%`:'',
+      d.vix!=null?`VIX ${d.vix}`:'',
+      d.iwdaDrop!=null?`IWDA ${d.iwdaDrop.toFixed(1)}%`:'',
+    ].filter(Boolean).map(x=>`<span class="metric-chip">${x}</span>`).join('');
+    return `<div class="history-card" onclick="openModal('${e.fecha}')">
+      <button class="history-card-del" onclick="event.stopPropagation();eliminar('${e.fecha}')">✕</button>
+      <div class="history-card-header">
+        <span class="history-fecha">${e.fecha}</span>
+        <span class="ciclo-pill" style="background:${c.bg};color:${c.color};">${e.ciclo}</span>
+      </div>
+      <div class="history-metrics">${chips}</div>
+    </div>`;
+  }).join('');
+}
+
+function openModal(fecha) {
+  const h=getHistorial();
+  const e=h.find(x=>x.fecha===fecha);
+  if(!e)return;
+  const d=e.data||{};
+  const c=cicloColor(e.ciclo);
+  document.getElementById('modal-fecha').textContent=fecha;
+  const pill=document.getElementById('modal-ciclo-pill');
+  pill.textContent=e.ciclo;pill.style.background=c.bg;pill.style.color=c.color;
+  const items=[
+    {label:'PMI Manufacturero',val:d.pmiMan!=null?d.pmiMan:'—'},
+    {label:'PMI Servicios',val:d.pmiSer!=null?d.pmiSer:'—'},
+    {label:'Paro EEUU',val:d.paro!=null?d.paro+'%':'—'},
+    {label:'Inflación IPC',val:d.inflacion!=null?d.inflacion+'%':'—'},
+    {label:'Curva 10Y−2Y',val:d.curva!=null?(d.curva>=0?'+':'')+d.curva.toFixed(2)+'%':'—'},
+    {label:'VIX',val:d.vix!=null?d.vix:'—'},
+    {label:'IWDA precio',val:d.iwda!=null?d.iwda.toFixed(2)+'€':'—'},
+    {label:'IWDA vs máx. 52s',val:d.iwdaDrop!=null?d.iwdaDrop.toFixed(1)+'%':'—'},
+    {label:'Brent',val:d.brent!=null?d.brent+' USD':'—'},
+  ];
+  document.getElementById('modal-grid').innerHTML=items.map(i=>`<div class="modal-item"><div class="modal-item-label">${i.label}</div><div class="modal-item-value">${i.val}</div></div>`).join('');
+  const acciones=e.acciones||[];
+  document.getElementById('modal-acciones').innerHTML=acciones.map(a=>`<div class="modal-accion"><span style="min-width:24px;">${a.e}</span><span>${a.t}</span></div>`).join('');
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeModal(e) {
+  if(!e||e.target===document.getElementById('modal-overlay')){
+    document.getElementById('modal-overlay').classList.remove('open');
+  }
+}
+
+function eliminar(fecha) {
+  if(!confirm('¿Eliminar '+fecha+'?'))return;
+  const h=getHistorial().filter(x=>x.fecha!==fecha);
+  setHistorial(h);
+  renderHistory();
+  showToast('Eliminado: '+fecha);
+}
+
+renderHistory();
+</script>
+</body>
+</html>
